@@ -4,7 +4,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = None
+
+def _get_client():
+    global client
+    if client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable not set. "
+                "Please add it to your .env file or Streamlit secrets."
+            )
+        client = Groq(api_key=api_key)
+    return client
 
 SCHEMA = """
 Database: Supabase PostgreSQL
@@ -72,6 +84,7 @@ Database schema:
 """
 
 def generate_sql(question: str, conversation_history: list = []) -> str:
+    groq_client = _get_client()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     for turn in conversation_history:
@@ -80,7 +93,7 @@ def generate_sql(question: str, conversation_history: list = []) -> str:
 
     messages.append({"role": "user", "content": question})
 
-    response = client.chat.completions.create(
+    response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
         temperature=0

@@ -5,7 +5,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = None
+
+def _get_client():
+    global client
+    if client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable not set. "
+                "Please add it to your .env file or Streamlit secrets."
+            )
+        client = Groq(api_key=api_key)
+    return client
 
 CONFIDENCE_PROMPT = """
 You are a SQL review expert. Given a business question and the SQL query generated to answer it, rate the confidence that the SQL correctly answers the question.
@@ -21,7 +33,8 @@ Confidence levels:
 
 def get_confidence(question: str, sql: str) -> dict:
     try:
-        response = client.chat.completions.create(
+        groq_client = _get_client()
+        response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": CONFIDENCE_PROMPT},
